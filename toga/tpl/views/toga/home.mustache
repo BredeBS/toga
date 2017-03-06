@@ -1,0 +1,81 @@
+<div class="jumbotron">
+      <h1>Hello &#x1F431;</h1>
+      <p class="lead">I'm Toga &#x1F431; and i'm a PHP Framework. A lightweight PHP framework.</p>
+
+    </div>
+
+    <div class="row marketing">
+      <div class="col-lg-12">
+        <h2>How to use</h2>
+        <p>You need to configure the router in <code>conf/routes.php</code> and also your DB credentials in <code>conf/routes.php</code>.</p>
+
+        <h2>Create module</h2>
+        <p>You can use the <a href="/generator/">Code Generator File</a> and also activate the <a href="/generator/addAdmin">Admin Area</a>.</p>
+
+        <h2>Error Log</h2>
+        <p>Toga Framework has a logger class so automatically logs all errors in <code>/log/year/month/day/</code> folder.</p>
+
+        <h2>Translations (i18n)</h2>
+        <p>We use the gettext function for locale so if you need to add a translate for your module first at all you need to print/echo all the strings with the function <code>dgettext</code>. The with poedit you can generate the po/mo files and store in <code>/module/[yourModule]/locale/[locale Code]/LC_MESSAGE/</code>.</p>
+<p>The code works with params domain and text, ie. <code>dgettext("domainLocale","Message")</code></p>
+        <p>For example if you have a module called "support" and want to add support for es_CL you need to do:</p>
+        <ol>
+          <li>Create the folder <code>/module/support/locale/es_CL/LC_MESSAGE/</code></li>
+          <li>Create the files <code>/module/support/locale/es_CL/LC_MESSAGE/support.mo</code> and  <code>/module/support/locale/es_CL/LC_MESSAGE/support.po</code></li>
+          <li>in your code use <code>dgettext("support","this is the message")</code></li>
+
+        </ol>
+        <p><i>This structure is defined by PHP so we can't modified it unless we add more code, but we don't want that.</i></p>
+
+        <h2>Templates</h2>
+        <p>We use <a href="https://github.com/bobthecow/mustache.php" target="_blank"><code>mustache.php</code></a> for template support, so you can separate your views from your controller.</p>
+
+        <h2>Autoload</h2>
+        <p>For framework class you need to instance the class <code>className</code>, so we'll automatically include the file. For your own-modules you need to instance the class <code>moduleYourNameModule</code>.<p>
+        <p>For Example, you had a module called "support". You need to do:</p>
+        <p>1.- create a folder <code>support</code> and a file in <code>/module/</code> called <code>support.php</code>. Example: <code>/toga/support/support.php</code></p>
+        <p>2.- define the class <b>WITH</b> the prefix 'module'. <i>You also can use self construct <code>__construct</code></i></p>
+        <pre>class moduleSupport{
+  function __construct(){
+
+  }
+  function callSupport(){
+  //call 911
+  }
+}</pre>
+        <p>3.- Instance the class</p>
+        <pre>$support = new moduleSupport();
+$support->callSupport();</pre>
+        <p>Automatically we call the file from <code>/module/support.php</code></p>
+        <p>Also if you wanna call it directly from the router you need to edit the file <code>conf/routes.php</code>, in example:</p>
+        <pre>$router->get('/support/call',"moduleSupport@callSupport");</pre>
+        <p>So you can instance that method directly from the URL <code>http://yourwebsite/support/call/</code></p>
+
+        <h5>If you wanna include a template in that module</h5>
+        <p>Edit your file <code>/module/support.php</code> and in your <code>callSupport</code> method add this:</p>
+        <pre>$template = new classTemplate();
+$template->setPageTitle("This is an emergency");
+echo $template->show("support/yourSupportPage");</pre>
+        <p>Your template file must ended in <code>.mustache</code>, and be stored in <code>/tpl/views/</code> in example: <code>/tpl/views/toga/home.mustache</code> <i>(yes, if you edit that template, you will edit <strong>me</strong>)</i>.
+          <h5>why instance template manually and not automatically?</h5>
+          <p>Simply, because you also can return json code from the script, for example, edit your file <code>/module/support.php</code> and in your <code>callSupport</code> method add this before the code you create recently:</p>
+          <pre>function callSupport($ext=""){
+  if(!empty($ext)){
+    echo  json_encode(array("status"=>"json"));
+  }else{
+  //your older code
+ }
+}</pre>
+          <p>Also add the support for json in your <code>conf/routes.php</code>:</p>
+          <pre>$router->get('/index\.json',"moduleSupport@callSupport");</pre>
+          <i><strong>Please</strong> note the backslash before the dot</i>
+          <h3>Third-party Libraries</h3>
+          <p>For Toga &#x1F431; Framework we use:</p>
+          <ul>
+            <li><a href="https://github.com/bramus/router" target="_blank">Router from Bramus!</a></li>
+            <li><a href="https://gist.github.com/abtris/1437966" target="_blank">Exception Class from Ladislav Prskavec</a></li>
+            <li><a href="https://getbootstrap.com/" target="_blank">Bootstrap</a></li>
+
+          </ul>
+      </div>
+    </div>
