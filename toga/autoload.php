@@ -1,5 +1,6 @@
 <?php
 define("BASEDIR",dirname(__FILE__,1)."/");
+define("MODULEDIR",dirname(__FILE__,1)."/module/");
 global $translations;
 include_once(BASEDIR."conf/config.inc.php");
 include_once(BASEDIR."class/locale.php");
@@ -8,7 +9,6 @@ spl_autoload_register(function ($className) {
     preg_match("/class|module/i",$className,$temp);
     if(count($temp)>0){
         $base = strtolower($temp[0]);
-
         $className = strtolower(preg_replace("/".$temp[0]."/i","",$className));
         if($base=="module"){
           $className.="/".$className;
@@ -33,6 +33,6 @@ try{
   $router->run();
 }
 catch(Exception $ex){
-  classLogger::log($ex,"asda");
+  classLogger::log($ex,"Exception in loader");
 }
 ?>

@@ -5,42 +5,54 @@ class classTemplate{
     var $styles;
     var $scripts;
     var $mustache;
-    var $isAdmin;
-    var $dataHeader;
-    function __construct(){
-      $this->styles   = array();
-      $this->scripts  = array();
-      $this->dataHeader  = array();
+    var $dataScriptsAndStyles;
+    var $showHeader;
+    var $nameHeader;
+    var $showFooter;
+    var $nameFooter;
+    function __construct($module){
+      $this->styles                 = array();
+      $this->scripts                = array();
+      $this->dataScriptsAndStyles   = array();
+      $this->module                 = $module;
+      $this->showFooter             = false;
+      $this->showHeader             = false;
       require BASEDIR.'/vendor/Mustache/Autoloader.php';
       Mustache_Autoloader::register();
       $this->mustache = new Mustache_Engine(array(
-        'loader' => new Mustache_Loader_FilesystemLoader((BASEDIR."tpl/views")),
-        'partials_loader' => new Mustache_Loader_FilesystemLoader(BASEDIR."tpl/partials"),
+        'loader' => new Mustache_Loader_FilesystemLoader((MODULEDIR.$this->module ."/views"))
       ));
     }
+    function setHeader($name){
+      $this->showHeader = true;
+      $this->nameHeader = $name;
+    }
+    function setFooter($name){
+      $this->showFooter = true;
+      $this->nameFooter = $name;
+    }
 
-    function show($template,$templateHeader="toga/header",$templateFooter="toga/footer",$values=array()){
+    function show($template,$params=array()){
       try{
-        $tpl       = $this->mustache->loadTemplate($template); // loads __DIR__.'/views/foo.mustache';
-        if($this->isAdmin){
-          $this->registerScript("assets/js/jquery-3.1.1.min.js");
-          $this->registerStyle("assets/css/bootstrap.min.css");
-          $this->registerScript("assets/js/bootstrap.min.js");
+        $return       = "";
+          if($this->showHeader){
+          $return     = $this->header($this->nameHeader);
         }
-        $return    = $this->header($templateHeader);
-        $return   .= $tpl->render($values);
+        $tpl          = $this->mustache->loadTemplate($template); // loads __DIR__.'/views/foo.mustache';
+        $return      .= $tpl->render($params);
+        if($this->showFooter){
+          $return    .= $this->footer($this->nameFooter);
+        }
         return $return;
       }
       catch(Exception $ex){
-        classLogger::log($ex,"asda");
+        p($ex);
+        classLogger::log($ex,"showModule");
       }
-    }
-    function setAdmin($admin=false){
-      $this->isAdmin = $admin;
     }
     function setHeaderData($key,$values){
       if($key!="styles"&&$key!="scripts")
-        $this->dataHeader[$key]=$values;
+        $this->dataScriptsAndStyles[$key]=$values;
     }
     function setPageTitle($title){
         $this->setHeaderData("title",$title);
@@ -66,12 +78,16 @@ class classTemplate{
       }
     }
 
-    public function header($templateHeader="toga/header"){
-      $this->dataHeader["scripts"]  = $this->scripts;
-      $this->dataHeader["styles"]   = $this->styles;
-      $tpl                          = $this->mustache->loadTemplate($templateHeader);
-      return $tpl->render($this->dataHeader);
-    }
+        public function header($templateHeader="header"){
+          $this->dataScriptsAndStyles["styles"]   = $this->styles;
+          $tpl                          = $this->mustache->loadTemplate($templateHeader);
+          return $tpl->render($this->dataScriptsAndStyles);
+        }
+        public function footer($templateFooter="footer"){
+          $this->dataFooter["scripts"]  = $this->scripts;
+          $tpl                          = $this->mustache->loadTemplate($templateFooter);
+          return $tpl->render($this->dataFooter);
+        }
 
 }
 

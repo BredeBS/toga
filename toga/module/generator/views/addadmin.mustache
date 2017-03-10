@@ -1,0 +1,27 @@
+<div class="row">
+  <div class="starter-template">
+    {{#errors}}
+      <div class="alert alert-danger">{{message}}</div>
+    {{/errors}}
+    {{#messages}}
+    {{#errorMessage}}
+      <div class="alert alert-danger">{{errorMessage}}<br/><ul>{{#emptyFields}}<li>{{field}}</li>{{/emptyFields}}</ul></div>
+    {{/errorMessage}}
+    <form method="post">
+      <div class="form-group">
+        <label for="exampleInputEmail1">{{yourNameLabel}}</label>
+        <input type="text" class="form-control" id="yourName" name="yourName" placeholder="{{yourNamePlaceholder}}">
+      </div>
+      <div class="form-group">
+        <label for="exampleInputEmail1">{{yourEmailAddressLabel}}</label>
+        <input type="email" class="form-control" id="yourEmail" name="yourEmail" placeholder="{{yourEmailAddressPlaceholder}}">
+      </div>
+      <div class="form-group">
+        <label for="exampleInputEmail1">{{yourPasswordLabel}}</label>
+        <input type="password" class="form-control" id="yourPassword" name="yourPassword" placeholder="{{yourPasswordPlaceholder}}">
+      </div>
+      <button type="submit" class="btn btn-primary" name="submit">{{createLabel}}</button>
+    </form>
+    {{/messages}}
+  </div>
+</div>

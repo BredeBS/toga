@@ -20,6 +20,13 @@ class classUtil{
       mkdir($dir);
     }
   }
+  public static function convertSprintfToFilter($kind){
+    if($kind=="%d"){
+        return FILTER_VALIDATE_INT;
+    }else if($kind=="%s"){
+        return FILTER_VALIDATE_STRING;
+    }
+  }
 }
 if(!function_exists("p")){
   function p($a){

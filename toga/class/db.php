@@ -1,299 +1,389 @@
 <?php
 
-/**
- * Clase DB
- * Permite la conexión con la base de datos
- *
- * @author
- * @copyright Copyright (c) 2008 - 2017, Brede Basualdo Serraino
- * @version 2.2
- * @package AdminPlus
- */
-//include_once("../conf.inc.php");
-if (!class_exists("Util")) {
-    include_once("../clases/clase.util.php");
+class classDB{
+  var $debug;
+  var $connection;
+  var $query;
+  var $result;
+  var $localeDomain;
+  var $utils;
+  protected $_Config;
+
+  public function __construct($debug = false) {
+    $this->localeDomain = "toga";
+    $this->debug        = DBDEBUG;
+    $this->utils        = new classUtil();
+    if ($debug) {
+        $this->debug    = true;
+    }
+  }
+
+  public function insert($tableName,$fieldsAndValues,$types){
+        if(!empty($tableName)){
+        $fieldsCount   = count($fieldsAndValues);
+        $return = new classReturn();
+        if($fieldsCount==count($types)&&$fieldsCount!=0){
+          $tempQuery   = "insert into ".$tableName;
+          $fieldsSteps = array();
+          $paramSteps  = array();
+          $step        = 0;
+
+          foreach($fieldsAndValues as $key=>$value){
+            $fieldsSteps[]  = $key;
+            $querySteps[]   = $key;
+            $add = true;
+            if($types[$step]=="%d"){
+              if(!is_numeric($value)){
+                $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The field '%s' is not a number"),$key));
+                $add = false;
+              }
+            }
+            if($add){
+              $processed      = sprintf($types[$step],$value);
+              $paramSteps[]   = $processed;
+            }
+            $step++;
+          }
+          if(count($fieldsSteps)>0&&count($fieldsSteps)==count($paramSteps)){
+            $this->query=$tempQuery." (".join(",",$fieldsSteps).") values ('".join("','",$paramSteps)."')";
+            $return = $this->executeQuery();
+          }else{
+            $return->addMessageToCollection(dgettext($this->localeDomain,"The number of processed fieldsAndValues and types doesn't match."));
+          }
+
+        }else{
+          $return->addMessageToCollection(dgettext($this->localeDomain,"The number of fieldsAndValues and types doesn't match."));
+        }
+      }
+      else{
+        $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare the table."));
+      }
+      return $return;
+      }
+
+
+  public function update($tableName,$fieldsAndValues,$types,$fieldsAndValuesWhere,$typesWhere,$force=false){
+    if(!empty($tableName)){
+    $fieldsCount   = count($fieldsAndValues);
+    $whereCount    = count($fieldsAndValuesWhere);
+    $return = new classReturn();
+    if($fieldsCount==count($types)&&$fieldsCount!=0)
+    {
+      if($whereCount==count($typesWhere))
+      {
+        $tempQuery   = "update ".$tableName." set ";
+        $paramSteps  = array();
+        $step        = 0;
+
+        foreach($fieldsAndValues as $key=>$value){
+          $add = true;
+          if($types[$step]=="%d"){
+            if(!is_numeric($value)){
+              $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The field '%s' is not a number"),$key));
+              $add        = false;
+            }
+          }
+          if($add){
+            $paramSteps[] = $key."='".sprintf($types[$step],$value)."'";
+          }
+          $step++;
+        }
+        $paramStepsWhere   = array();
+        $step              = 0;
+
+        foreach($fieldsAndValuesWhere as $key=>$value){
+          $add = true;
+          if($typesWhere[$step]=="%d"){
+            if(!is_numeric($value)){
+              $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The field '%s' is not a number"),$key));
+              $add        = false;
+            }
+          }
+          if($add){
+            $paramStepsWhere[] = $key."='".sprintf($typesWhere[$step],$value)."'";
+          }
+          $step++;
+        }
+        if(count($fieldsAndValues)>0&&count($fieldsAndValues)==count($paramSteps)){
+            if(count($fieldsAndValues)>0&&count($fieldsAndValues)==count($paramSteps)){
+              $this->query    =  $tempQuery.join(",",$paramSteps)." where ";
+              $where          = join(" and ",$paramStepsWhere);
+              $execute        = true;
+              if(empty($where)){
+                $execute      = $force;
+              }
+              if($execute){
+                $this->query    .= $where;
+                $return = $this->executeQuery();
+              }else{
+                $return->addMessageToCollection(dgettext($this->localeDomain,"The where is empty."));
+              }
+          }else{
+            $return->addMessageToCollection(dgettext($this->localeDomain,"The number of processed fieldsAndValues and types doesn't match."));
+          }
+        }else{
+          $return->addMessageToCollection(dgettext($this->localeDomain,"The number of processed fieldsAndValues and types doesn't match."));
+        }
+      }else{
+        $return->addMessageToCollection(dgettext($this->localeDomain,"The number of fieldsAndValuesWhere and typesWhere doesn't match."));
+      }
+    }else{
+      $return->addMessageToCollection(dgettext($this->localeDomain,"The number of fieldsAndValues and types doesn't match."));
+    }
+  }
+  else{
+    $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare the table."));
+  }
+    return $return;
+  }
+  function executeOther(){
+    $return = $this->connect();
+    $data  = mysqli_query($this->connection,$this->query);
+    if($data!=false){
+      $return->setObject($data);
+      p($obj);
+    }else{
+      $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The Query '%s' doesn't look good."),$this->query));
+    }
+    mysqli_free_result($data);
+
+    return $return;
+  }
+
+    function getLastQuery(){
+      return $this->query;
+    }
+      function execute($query){
+        $return = new classReturn();
+        if(empty($query)){
+
+          $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare a query."));
+        }else{
+          $this->query = $query;
+          $return = $this->executeQuery();
+        }
+        return $return;
+      }
+function getOne($tableName,$fieldToSelect,$fieldsAndValuesWhere=array(),$typesWhere=array()){
+  $return =  $this->select($tableName,"count(".$fieldToSelect.") as returnValue",$fieldsAndValuesWhere,$typesWhere,0,1);
+  if(isset($return->collection)){
+    if(is_array($return->collection)){
+      $return->collection = $return->collection[0]->returnValue;
+    }
+  }
+  return ($return);
 }
-if (!class_exists("Conexion")) {
 
-    class Conexion {
-
-        var $depura;
-        var $con;
-        protected $_Config;
-
-        public function __construct($a = false) {
-            global $_Config;
-            $this->_Config = $_Config;
-            if ($this->_Config["depuraDB"]) {
-                $this->depura = true;
-            }
-            if ($a) {
-
-                $this->depura = $a;
-            }
-        }
-
-        /**
-         * Realiza un select directo
-         * @param string $Campos
-         * @param string $Tabla
-         * @param string $Condicion
-         * @return <type>
-         */
-        function SeleccionarTodo($Campos, $Tabla, $Condicion) {
-            $CamposLeer = "";
-            if (is_array($Campos)) {
-                $total = count($Campos);
-                for ($i = 0; $i < $total; $i++) {
-                    $CamposLeer .= $Campos[$i];
-                    if ($i < $total - 1) {
-                        $CamposLeer.=",";
-                    }
+  function select($tableName="",$fieldsToSelect="*",$fieldsAndValuesWhere=array(),$typesWhere=array(),$page=0,$pageSize=10){
+      if(is_string($fieldsToSelect)){
+        $fieldsToSelect = array($fieldsToSelect);
+      }
+      if(!empty($tableName)){
+        $fieldsCount   = count($fieldsToSelect);
+        $whereCount    = count($fieldsAndValuesWhere);
+        $return = new classReturn();
+        if($fieldsCount!=0){
+          if($whereCount==count($typesWhere)){
+            $paramStepsWhere   = array();
+            if(is_array($fieldsAndValuesWhere)){
+              $step              = 0;
+              foreach($fieldsAndValuesWhere as $key=>$value){
+                $add = true;
+                if($typesWhere[$step]=="%d"){
+                  if(!is_numeric($value)){
+                    $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The field '%s' is not a number"),$key));
+                    $add        = false;
+                  }
                 }
-            } else {
-                $CamposLeer = $Campos;
-            }
-            $Consulta = "Select " . $CamposLeer . " from " . $Tabla;
-            if (trim($Condicion) != "") {
-                $Consulta .= " Where " . $Condicion;
-            }
-            return $this->Execute($Consulta);
-        }
-
-        function SeleccionarUno($Campo, $Tabla, $Condicion) {
-            $Consulta = "Select " . $Campo . " from " . $Tabla;
-            if (trim($Condicion) != "") {
-                $Consulta .= " Where " . $Condicion;
-            }
-            $resultArray = $this->Execute($Consulta);
-            if (strpos($Campo, ".") === FALSE) {
-
-            } else {
-                $tempo = split("\.", $Campo);
-                $Campo = $tempo[1];
-            }
-            if (count($resultArray) == 0) {
-                return "0";
-            }
-            return $resultArray[0][$Campo];
-        }
-
-        /**
-         * Extrae un ítem a partir de una consulta SQL
-         * @param <type> $Consulta
-         * @param <type> $Arreglo
-         * @return <type> resultado
-         */
-        function GetOne($Consulta, $Arreglo = false) {
-            $resultado = $this->Execute($Consulta, $Arreglo);
-            if (count($resultado) == 0) {
-                return "";
-            }
-            $pos = strrpos($Consulta, " as ");
-            if ($pos === false) { // note: three equal signs
-                $dato = preg_split('/ /', $Consulta);
-                return $resultado[0][$dato[1]];
-            } else {
-                $dato = preg_split('/\ as /', $Consulta);
-                $dato = preg_split('/ /', $dato[1]);
-                return $resultado[0][$dato[0]];
-            }
-        }
-
-
-        function GetOneMax($Consulta, $Arreglo = false) {
-            $resultado = $this->Execute($Consulta, $Arreglo);
-            if (count($resultado) == 0) {
-                return "";
-            }
-            return $resultado[0]["dato"];
-        }
-
-        function Seleccionar($Consulta) {
-            $this->Conectar();
-
-
-            mysql_set_charset('utf8', $this->con);
-            $result = mysql_query($Consulta);
-            $resultArray = array();
-            while (
-            ($resultArray[] = mysql_fetch_assoc($result)) || array_pop($resultArray)
-            );
-            mysql_free_result($result);
-            $this->CerrarConexion();
-            return $resultArray;
-        }
-
-        function Conectar() {
-            global $_Config;
-//            p($_GET);
-            try {
-                $this->con = @mysql_connect($_Config["DB"]["Servidor"], $_Config["DB"]["Usuario"], $_Config["DB"]["Clave"]);
-//                p($this->con);
-                if (!$this->con) {
-                    if (isset($_GET["api"])) {
-                        header('Content-type: application/json');
-                        $dataFalso = array();
-                        $dataFalso["estado"] = false;
-                        $dataFalso["mensaje"] = "Error con el Servidor";
-                        $dataFalso["codigo"] = 1;
-                        echo json_encode($dataFalso);
-                        die("");
-                    } else
-                        die("Error: No se ha iniciado la base de datos");
+                if($add){
+                  $paramStepsWhere[] = $key."='".sprintf($typesWhere[$step],$value)."'";
                 }
-                $db_selected = @mysql_select_db($_Config["DB"]["DB"], $this->con);
-                if (!$db_selected) {
-                    if (isset($_GET["api"])) {
-                        header('Content-type: application/json');
-                        $dataFalso = array();
-                        $dataFalso["estado"] = false;
-                        $dataFalso["mensaje"] = "Error con el Servidor";
-                        $dataFalso["codigo"] = 2;
-                        echo json_encode($dataFalso);
-                        die("");
-                    } else
-                        die("Error: La DB seleccionada no se encuentra disponible");
-                }
-//                }else {
-//                    if (isset($_GET["api"])) {
-//                        header('Content-type: application/json');
-//                        $dataFalso = array();
-//                        $dataFalso["estado"] = false;
-//                        $dataFalso["mensaje"] = "Error con el Servidor";
-//                        $dataFalso["codigo"] = 4;
-//                        echo json_encode($dataFalso);
-//                        die("");
-//                    } else
-//                        die("Error: La DB seleccionada no se encuentra disponible");
-//                }
-            } catch (Exception $e) {
-                if (isset($_GET["api"])) {
-                    header('Content-type: application/json');
-                    $dataFalso = array();
-                    $dataFalso["estado"] = false;
-                    $dataFalso["mensaje"] = "Error con el Servidor";
-                    $dataFalso["codigo"] = 3;
-                    echo json_encode($dataFalso);
-                    die("");
-                } else
-                    die("Error: La Base de datos no está disponible");
+                $step++;
+              }
             }
-        }
+            if(count($fieldsAndValuesWhere)==count($paramStepsWhere)){
+              $this->query    =  "select ".join(",",$fieldsToSelect)." from ".$tableName;
+              $where          = join(" and ",$paramStepsWhere);
+              if(!empty($where)){
+                $this->query    .= " where ".$where;
+              }
+              $this->query  .= " limit ".($page*$pageSize).",".$pageSize;
+              p($this->query);
+              $return = $this->executeQuery();
 
-        function CerrarConexion() {
-            mysql_close($this->con);
-        }
-
-        function Insertar($Consulta, $up = false) {
-            $this->Conectar();
-
-//            mysql_query("SET NAMES 'utf8'");
-            $b = mysql_query($Consulta);
-            $id = mysql_insert_id();
-            if ($up)
-                $update = $this->mysql_modified_rows();
-            $this->CerrarConexion();
-
-            if ($up)
-                return $update;
-            return $id;
-        }
-
-        function mysql_modified_rows() {
-            $dev = array();
-            $info_str = mysql_info();
-            $a_rows = mysql_affected_rows();
-            $a = preg_split("/ /", $info_str);
-            if (count($a) == 9) {
-                $dev["pareado"] = $a[2];
-                $dev["cambio"] = $a[5];
-                $dev["advertencias"] = $a[8];
-                return $dev;
+            }else{
+              $return->addMessageToCollection(dgettext($this->localeDomain,"The number of processed fieldsAndValuesWhere and typesWhere doesn't match."));
             }
-            return 0;
+          }else{
+            $return->addMessageToCollection(dgettext($this->localeDomain,"The number of fieldsAndValuesWhere and typesWhere doesn't match."));
+          }
+        }else{
+          $return->addMessageToCollection(dgettext($this->localeDomain,"You must select at least one field from the table ."));
         }
+      }else{
+        $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare the table."));
+      }
+      return $return;
 
-        function AbreConexion() {
+  }
 
-        }
-
-        function depura($val) {
-            if (is_int($val)) {
-                if ($val == 0) {
-                    $this->depura = false;
-                } else
-                    $this->depura = true;
-            }
-            else {
-                $this->depura = $val;
-            }
-        }
-
-        function Conexion($val = false) {
-            if (is_int($val)) {
-                if ($val == 0) {
-                    $this->depura = false;
-                } else
-                    $this->depura = true;
-            }
-            else {
-                $this->depura = $val;
-            }
-        }
-
-        function d($val) {
-            $this->depura($val);
-        }
-
-        function DB() {
-            global $_Conexion;
-            return $_Conexion["BaseDeDatos"];
-        }
-
-        function Execute($consulta, $arreglo = false) {
-//            p(func_get_args());
-            $dato = (explode(" ", $consulta));
-            $insert = $dato[0];
-            if ($arreglo) {
-                $dato = (explode("?", $consulta));
-                $Consulta = "";
-                $i = 0;
-                $largo = count($arreglo);
-                foreach ($dato as $item) {
-                    if ($i < $largo) {
-                        $Consulta.=$item . "'" . (($arreglo[$i])) . "'";
-                    } else {
-                        $Consulta.=$item;
-                    }
-                    $i++;
-                }
-            } else {
-                $Consulta = $consulta;
-            }
-            $Consulta = trim($Consulta);
-            if ($this->depura) {
-                p($Consulta);
-            }
-            $insert = strtolower($insert);
-            if ($insert == "select" || $insert == "show" || $insert == "desc") {
-                return $this->Seleccionar($Consulta);
-            } else {
-                $up = false;
-                if ($insert == "update")
-                    $up = true;
-                return $this->Insertar($Consulta, $up);
-            }
-        }
-
+  function connect() {
+    $return           = new classReturn();
+    $return->status   = true;
+    $mustGoOn         = true;
+    if(empty(DBUSER)){
+      $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare your DBUSER"));
+      $mustGoOn = false;
+    }
+    if(empty(DBNAME)){
+      $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare your DBNAME"));
+      $mustGoOn = false;
+    }
+    if(empty(DBSERVER)){
+      $return->addMessageToCollection(dgettext($this->localeDomain,"You must declare your DBSERVER"));
+      $mustGoOn = false;
     }
 
-}
-if (!function_exists("mysql_real_escape_stringBS")) {
-
-    function mysql_real_escape_stringBS($cadena) {
-        return $cadena;
+    if($mustGoOn){
+        try {
+            $this->connection = @mysqli_connect(DBSERVER,DBUSER,DBPASS);
+            if (!$this->connection) {
+                $return->addMessageToCollection(dgettext($this->localeDomain,"We can't connect with your DB Server please review your credentials"));
+                $mustGoOn = false;
+            }
+            $dbSelected = mysqli_select_db($this->connection,DBNAME);
+            if (!$dbSelected) {
+              $return->addMessageToCollection(dgettext($this->localeDomain,"We can't select the DB"));
+              $mustGoOn = false;
+            }
+        } catch (Exception $ex) {
+            $return->addMessageToCollection(dgettext($this->localeDomain,"Something happended"));
+            $return->addMessageToCollection($ex->getMessage());
+            $mustGoOn = false;
+            classLogger::log($ex,"Exception in loader");
+        }
     }
+    return $return;
+  }
+
+  function closeConnection() {
+      mysqli_close($this->connection);
+  }
+
+
+  private function insertUpdateData($isUpdate = false) {
+      $returnData   = new StdClass();
+      $return = $this->connect();
+      if($return->status){
+        mysqli_query($this->connection ,$this->query);
+        $insert           = mysqli_insert_id($this->connection );
+        $return->status   = true;
+        if ($isUpdate){
+            $return->object   = $this->mysqli_modified_rows();
+        }else{
+            $objectInsert             = new StdClass();
+            $objectInsert->idInserted = $insert;
+            $return->object           = $objectInsert;
+        }
+
+        $this->closeConnection();
+      }
+      return $return;
+  }
+
+  function mysqli_modified_rows() {
+      $dev = array();
+      $info_str = mysqli_info($this->connection );
+      $a_rows = mysqli_affected_rows($this->connection );
+      $a = preg_split("/ /", $info_str);
+      if (count($a) == 9) {
+          $dev["paired"] = $a[2];
+          $dev["changed"] = $a[5];
+          $dev["warnings"] = $a[8];
+          return $dev;
+      }
+      return 0;
+  }
+
+
+  function debug($debug) {
+      if (is_int($debug)) {
+          if ($debug == 0) {
+              $this->debug = false;
+          } else
+              $this->debug = true;
+      }
+      else {
+          $this->debug = $debug;
+      }
+  }
+
+  function Connection($debug = false) {
+      if (is_int($debug)) {
+          if ($debug == 0) {
+              $this->debug = false;
+          } else
+              $this->debug = true;
+      }
+      else {
+          $this->debug = $debug;
+      }
+  }
+
+
+
+  function DB() {
+      global $_Conexion;
+      return $_Conexion["BaseDeDatos"];
+  }
+  private function selectData(){
+    $return = $this->connect();
+    $data  = mysqli_query($this->connection,$this->query);
+    if($data!=false){
+      while ($responseData = $data->fetch_object()) {
+        $return->addItemToCollection($responseData);
+      }
+      $return->setObject($data);
+      p($obj);
+    }else{
+      $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The Query '%s' doesn't look good. (the table exists?)"),$this->query));
+    }
+    mysqli_free_result($data);
+
+    return $return;
+  }
+  private function executeQuery() {
+    $return = new classReturn();
+    if(!empty($this->query)){
+      $querySlices = preg_split("/ /", $this->query);
+      if(count($querySlices)>0){
+        $whatToDo = strtolower($querySlices[0]);
+        if ($whatToDo == "select" || $whatToDo == "show" || $whatToDo == "desc") {
+          $return = $this->selectData();
+        }else if($whatToDo=="insert"){
+          $return = $this->insertUpdateData(false);
+        }else if ($whatToDo == "update"){
+          $return = $this->insertUpdateData(true);
+        }else if ($whatToDo == "create" || $whatToDo == "alter"||$whatToDo == "show"||$whatToDo == "desc"){
+          $return = $this->executeOther();
+        }else{
+          if($this->debug){
+            $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"The Query '%s' doesn't match the expected"),$this->query));
+          }else{
+            $return->addMessageToCollection(dgettext($this->localeDomain,"The Query doesn't match the expected content"));
+          }
+        }
+        if($this->debug){
+          $return->addMessageToCollection(sprintf(dgettext($this->localeDomain,"Queries Executed: '%s'"),$this->query));
+        }
+      }else{
+        $return->addMessageToCollection(dgettext($this->localeDomain,"The Query doesn't match the expected format"));
+      }
+    }else{
+        $return->addMessageToCollection(dgettext($this->localeDomain,"The Query is Empty"));
+    }
+    return $return;
+  }
 
 }
 ?>

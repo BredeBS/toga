@@ -1,5 +1,5 @@
 <?php
-class message{
+class classMessage{
   var $code;
   var $text;
   var $return;
@@ -10,4 +10,5 @@ class message{
     $this->text   = $text;
     $this->data   = $data;
   }
+
 } ?>
